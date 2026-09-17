@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản lý Category (AJAX & RESTful API)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+</head>
+<body class="bg-light">
+
+    <!-- Header Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm mb-4">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/"><i class="fas fa-shopping-cart me-2"></i>SpringBoot Store</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="/"><i class="fas fa-home me-1"></i>Trang chủ</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/admin/categories"><i class="fas fa-list me-1"></i>Quản lý Category (AJAX)</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/admin/products"><i class="fas fa-box me-1"></i>Quản lý Product (AJAX)</a></li>
+                </ul>
+                <div class="d-flex gap-2">
+                    <a href="/swagger-ui.html" target="_blank" class="btn btn-outline-light btn-sm"><i class="fas fa-code me-1"></i>Swagger 3</a>
+                    <a href="/graphiql" target="_blank" class="btn btn-warning btn-sm fw-bold"><i class="fas fa-project-diagram me-1"></i>GraphiQL</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card shadow-sm p-4 mb-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                <h4 class="text-primary fw-bold mb-0"><i class="fas fa-folder-open me-2"></i>Danh Sách Danh Mục (Category AJAX)</h4>
+                <button class="btn btn-success fw-bold" onclick="showCreateModal()"><i class="fas fa-plus me-1"></i> Thêm Category AJAX</button>
+            </div>
+
+            <!-- Search & Filter Controls -->
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" id="searchName" class="form-control" placeholder="Tìm kiếm theo tên category...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select id="pageSize" class="form-select">
+                        <option value="5" selected>5 dòng / trang</option>
+                        <option value="10">10 dòng / trang</option>
+                        <option value="20">20 dòng / trang</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle" id="categoryTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 10%;">ID</th>
+                            <th style="width: 20%;">Icon</th>
+                            <th style="width: 45%;">Tên Category</th>
+                            <th style="width: 25%;">Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Rows rendered via AJAX -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination Bar -->
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <span id="pageInfo" class="text-muted small"></span>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0" id="pagination">
+                        <!-- Pagination rendered via AJAX -->
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Modal -->
+    <div class="modal fade" id="createCategoryModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="addCategoryForm" method="post" enctype="multipart/form-data">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title fw-bold"><i class="fas fa-plus-circle me-2"></i>Thêm Danh Mục Mới</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Tên Category</label>
+                            <input type="text" class="form-control" name="categoryName" id="new_categoryName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Icon (Ảnh)</label>
+                            <input type="file" class="form-control" name="icon" id="new_icon">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                        <button type="submit" class="btn btn-success fw-bold"><i class="fas fa-save me-1"></i>Thêm Mới</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal fade" id="updateCategoryModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="updateCategoryForm" method="post" enctype="multipart/form-data">
+                    <div class="modal-header bg-warning text-dark">
+                        <h5 class="modal-title fw-bold"><i class="fas fa-edit me-2"></i>Cập Nhật Danh Mục</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="categoryId" id="up_categoryId">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Tên Category</label>
+                            <input type="text" class="form-control" name="categoryName" id="up_categoryName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Icon Hiện Tại</label>
+                            <div id="up_iconPreview" class="mb-2"></div>
+                            <label class="form-label fw-bold">Đổi Icon Mới (nếu có)</label>
+                            <input type="file" class="form-control" name="icon" id="up_icon">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                        <button type="submit" class="btn btn-warning fw-bold"><i class="fas fa-save me-1"></i>Cập Nhật</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        var contextPath = /*[[@{/}]]*/ '';
+        if (contextPath.endsWith('/')) contextPath = contextPath.substring(0, contextPath.length - 1);
+
+        var currentPage = 0;
+
+        $(document).ready(function() {
+            loadData(0);
+
+            $('#searchName').on('keyup input', function() {
+                currentPage = 0;
+                loadData(0);
+            });
+
+            $('#pageSize').change(function() {
+                currentPage = 0;
+                loadData(0);
+            });
+
+            // Add Category Form Submit AJAX
+            $('#addCategoryForm').submit(function(e) {
+                e.preventDefault();
+                var formData = new FormData(this);
+                $.ajax({
+                    url: contextPath + '/api/category/addCategory',
+                    type: 'POST',
+                    data: formData,
+                    cache: false,
+                    contentType: false,
+                    processData: false,
+                    success: function(res) {
+                        $('#createCategoryModal').modal('hide');
+                        $('#addCategoryForm')[0].reset();
+                        loadData(currentPage);
+                        alert("Thêm category thành công!");
+                    },
+                    error: function(err) {
+                        alert("Lỗi: " + (err.responseJSON ? err.responseJSON.message : "Thao tác thất bại"));
+                    }
+                });
+            });
+
+            // Update Category Form Submit AJAX
+            $('#updateCategoryForm').submit(function(e) {
+                e.preventDefault();
+                var formData = new FormData(this);
+                $.ajax({
+                    url: contextPath + '/api/category/updateCategory',
+                    type: 'PUT',
+                    data: formData,
+                    cache: false,
+                    contentType: false,
+                    processData: false,
+                    success: function(res) {
+                        $('#updateCategoryModal').modal('hide');
+                        loadData(currentPage);
+                        alert("Cập nhật category thành công!");
+                    },
+                    error: function(err) {
+                        alert("Lỗi: " + (err.responseJSON ? err.responseJSON.message : "Thao tác thất bại"));
+                    }
+                });
+            });
+        });
+
+        function loadData(page) {
+            currentPage = page;
+            var searchName = $('#searchName').val();
+            var size = $('#pageSize').val();
+
+            $.ajax({
+                url: contextPath + '/api/category/paged',
+                type: 'GET',
+                data: { name: searchName, page: page, size: size },
+                success: function(res) {
+                    var data = res.body;
+                    renderTable(data.content);
+                    renderPagination(data);
+                }
+            });
+        }
+
+        function renderTable(categories) {
+            var tbody = $('#categoryTable tbody');
+            tbody.empty();
+
+            if (!categories || categories.length === 0) {
+                tbody.html('<tr><td colspan="4" class="text-center text-muted py-4">Không có dữ liệu</td></tr>');
+                return;
+            }
+
+            for (var i = 0; i < categories.length; i++) {
+                var cat = categories[i];
+                var imgHtml = cat.icon ? '<img src="/uploads/' + cat.icon + '" style="width:50px;height:50px;object-fit:cover;" class="rounded border" onerror="this.src=\'https://via.placeholder.com/50\'">' : '<span class="text-muted">No Icon</span>';
+
+                var row = '<tr>' +
+                            '<td>' + cat.categoryId + '</td>' +
+                            '<td>' + imgHtml + '</td>' +
+                            '<td class="fw-bold">' + cat.categoryName + '</td>' +
+                            '<td>' +
+                                '<button class="btn btn-sm btn-outline-warning me-2" onclick="showEditModal(' + cat.categoryId + ', \'' + escapeHtml(cat.categoryName) + '\', \'' + (cat.icon || '') + '\')"><i class="fas fa-edit"></i> Sửa</button>' +
+                                '<button class="btn btn-sm btn-outline-danger" onclick="deleteCategory(' + cat.categoryId + ')"><i class="fas fa-trash"></i> Xóa</button>' +
+                            '</td>' +
+                          '</tr>';
+                tbody.append(row);
+            }
+        }
+
+        function renderPagination(pageData) {
+            var pagination = $('#pagination');
+            pagination.empty();
+
+            $('#pageInfo').text('Trang ' + (pageData.number + 1) + ' / ' + (pageData.totalPages || 1) + ' (Tổng số: ' + pageData.totalElements + ')');
+
+            if (pageData.totalPages <= 1) return;
+
+            var prevDisabled = pageData.first ? 'disabled' : '';
+            pagination.append('<li class="page-item ' + prevDisabled + '"><a class="page-link" href="javascript:void(0)" onclick="loadData(' + (pageData.number - 1) + ')">Trước</a></li>');
+
+            for (var p = 0; p < pageData.totalPages; p++) {
+                var active = (p === pageData.number) ? 'active' : '';
+                pagination.append('<li class="page-item ' + active + '"><a class="page-link" href="javascript:void(0)" onclick="loadData(' + p + ')">' + (p + 1) + '</a></li>');
+            }
+
+            var nextDisabled = pageData.last ? 'disabled' : '';
+            pagination.append('<li class="page-item ' + nextDisabled + '"><a class="page-link" href="javascript:void(0)" onclick="loadData(' + (pageData.number + 1) + ')">Sau</a></li>');
+        }
+
+        function showCreateModal() {
+            $('#addCategoryForm')[0].reset();
+            $('#createCategoryModal').modal('show');
+        }
+
+        function showEditModal(id, name, icon) {
+            $('#up_categoryId').val(id);
+            $('#up_categoryName').val(name);
+            if (icon) {
+                $('#up_iconPreview').html('<img src="/uploads/' + icon + '" style="width:60px;height:60px;" class="rounded border">');
+            } else {
+                $('#up_iconPreview').html('<span class="text-muted">Không có icon</span>');
+            }
+            $('#updateCategoryModal').modal('show');
+        }
+
+        function deleteCategory(id) {
+            if (confirm('Bạn có chắc chắn muốn xóa category ID: ' + id + '?')) {
+                $.ajax({
+                    url: contextPath + '/api/category/deleteCategory?categoryId=' + id,
+                    type: 'DELETE',
+                    success: function() {
+                        loadData(currentPage);
+                        alert("Xóa thành công!");
+                    },
+                    error: function(err) {
+                        alert("Lỗi khi xóa category");
+                    }
+                });
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Trang Chủ - Cửa Hàng Sản Phẩm</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <style>
+        .product-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            height: 100%;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        }
+        .product-img {
+            height: 180px;
+            object-fit: cover;
+            background-color: #f8f9fa;
+        }
+        .price-badge {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #d9534f;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+    <!-- Header Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm mb-4">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/"><i class="fas fa-shopping-cart me-2"></i>SpringBoot Store</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link active" href="/"><i class="fas fa-home me-1"></i>Trang chủ</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/admin/categories"><i class="fas fa-list me-1"></i>Quản lý Category (AJAX)</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/admin/products"><i class="fas fa-box me-1"></i>Quản lý Product (AJAX)</a></li>
+                </ul>
+                <div class="d-flex gap-2">
+                    <a href="/swagger-ui.html" target="_blank" class="btn btn-outline-light btn-sm"><i class="fas fa-code me-1"></i>Swagger 3</a>
+                    <a href="/graphiql" target="_blank" class="btn btn-warning btn-sm fw-bold"><i class="fas fa-project-diagram me-1"></i>GraphiQL</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Title & Main Filters -->
+        <div class="card p-3 mb-4 shadow-sm">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <h4 class="mb-0 text-primary fw-bold" id="viewTitle"><i class="fas fa-store me-2"></i>Tất cả sản phẩm</h4>
+                
+                <div class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-success fw-bold" id="btnPriceAsc">
+                        <i class="fas fa-sort-numeric-down me-1"></i> Xem giá từ thấp đến cao
+                    </button>
+                    <button class="btn btn-outline-primary" id="btnResetAll">
+                        <i class="fas fa-sync-alt me-1"></i> Tất cả sản phẩm
+                    </button>
+                </div>
+            </div>
+
+            <!-- Categories Filter -->
+            <hr class="my-3">
+            <div>
+                <span class="fw-bold me-2"><i class="fas fa-filter me-1"></i>Lọc theo Danh mục:</span>
+                <div id="categoryFilterButtons" class="d-inline-flex flex-wrap gap-2 mt-2 mt-md-0">
+                    <!-- Loaded via AJAX -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Products Grid -->
+        <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4 mb-5" id="productGrid">
+            <!-- Loaded via AJAX -->
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        var contextPath = /*[[@{/}]]*/ '';
+        if (contextPath.endsWith('/')) contextPath = contextPath.substring(0, contextPath.length - 1);
+
+        $(document).ready(function() {
+            loadCategories();
+            loadAllProducts();
+
+            // Button: Price Low to High
+            $('#btnPriceAsc').click(function() {
+                $('#viewTitle').html('<i class="fas fa-sort-amount-down me-2"></i>Sản phẩm giá từ thấp đến cao');
+                $.getJSON(contextPath + '/api/product/price-asc', function(res) {
+                    renderProducts(res.body);
+                });
+            });
+
+            // Button: Reset All
+            $('#btnResetAll').click(function() {
+                loadAllProducts();
+            });
+        });
+
+        function loadCategories() {
+            $.getJSON(contextPath + '/api/category', function(res) {
+                var categories = res.body || [];
+                var html = '<button class="btn btn-sm btn-outline-secondary active cat-btn" data-id="0">Tất cả</button>';
+                for (var i = 0; i < categories.length; i++) {
+                    var cat = categories[i];
+                    html += '<button class="btn btn-sm btn-outline-secondary cat-btn" data-id="' + cat.categoryId + '">' +
+                            (cat.icon ? '<img src="/uploads/' + cat.icon + '" style="width:18px;height:18px;" class="me-1" onerror="this.style.display=\'none\'">' : '') +
+                            cat.categoryName + '</button>';
+                }
+                $('#categoryFilterButtons').html(html);
+
+                $('.cat-btn').click(function() {
+                    $('.cat-btn').removeClass('active btn-primary').addClass('btn-outline-secondary');
+                    $(this).addClass('active btn-primary').removeClass('btn-outline-secondary');
+                    var catId = $(this).data('id');
+                    var catName = $(this).text();
+
+                    if (catId === 0) {
+                        loadAllProducts();
+                    } else {
+                        $('#viewTitle').html('<i class="fas fa-folder me-2"></i>Sản phẩm thuộc danh mục: ' + catName);
+                        $.getJSON(contextPath + '/api/product/category/' + catId, function(res) {
+                            renderProducts(res.body);
+                        });
+                    }
+                });
+            });
+        }
+
+        function loadAllProducts() {
+            $('#viewTitle').html('<i class="fas fa-store me-2"></i>Tất cả sản phẩm');
+            $.getJSON(contextPath + '/api/product', function(res) {
+                renderProducts(res.body);
+            });
+        }
+
+        function renderProducts(products) {
+            var grid = $('#productGrid');
+            grid.empty();
+
+            if (!products || products.length === 0) {
+                grid.html('<div class="col-12 text-center py-5 text-muted"><h5><i class="fas fa-info-circle me-2"></i>Không tìm thấy sản phẩm nào</h5></div>');
+                return;
+            }
+
+            for (var i = 0; i < products.length; i++) {
+                var p = products[i];
+                var imgPath = p.images ? '/uploads/' + p.images : 'https://via.placeholder.com/300x200?text=No+Image';
+                var categoryName = p.category ? p.category.categoryName : 'Chưa phân loại';
+                var priceStr = p.unitPrice.toLocaleString('vi-VN') + ' đ';
+
+                var cardHtml = 
+                    '<div class="col">' +
+                        '<div class="card product-card shadow-sm border-0">' +
+                            '<img src="' + imgPath + '" class="card-img-top product-img" alt="' + p.productName + '" onerror="this.src=\'https://via.placeholder.com/300x200?text=No+Image\'">' +
+                            '<div class="card-body d-flex flex-column">' +
+                                '<span class="badge bg-secondary mb-2 w-auto me-auto">' + categoryName + '</span>' +
+                                '<h5 class="card-title fw-bold text-dark text-truncate">' + p.productName + '</h5>' +
+                                '<p class="card-text text-muted small flex-grow-1" style="max-height: 40px; overflow: hidden;">' + (p.description || '') + '</p>' +
+                                '<div class="mt-2 d-flex justify-content-between align-items-center">' +
+                                    '<span class="price-badge">' + priceStr + '</span>' +
+                                    '<span class="badge bg-success-subtle text-success">SL: ' + p.quantity + '</span>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+
+                grid.append(cardHtml);
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

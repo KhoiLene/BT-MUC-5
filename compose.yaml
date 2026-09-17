@@ -1,0 +1,11 @@
+services:
+  postgres:
+    image: 'postgres:15-alpine'
+    container_name: 'muc5-postgres'
+    environment:
+      - 'POSTGRES_DB=mydatabase'
+      - 'POSTGRES_PASSWORD=secret'
+      - 'POSTGRES_USER=myuser'
+    ports:
+      - '5433:5432'
+    restart: always
